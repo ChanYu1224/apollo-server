@@ -1,0 +1,74 @@
+enum Category {
+    NOVEL
+    TECHNOLOGY
+    SOCIETY
+    BUSINESS
+    DESIGN
+    HISTORY
+}
+
+type Book {
+    "uid: uuidで一意に識別される本のID"
+    uid: ID!
+
+    "title: 本のタイトル"
+    title: String!
+
+    "category: 本のカテゴリ, NOVEL, TECHNOLOGY, SOCIETY, BUSINESS, DESIGN, HISTORYのいずれか"
+    category: Category!
+
+    "description: 本の説明"
+    description: String
+}
+
+input SearchQuery {
+    "title: 本のタイトル"
+    title: String
+
+    "category: 本のカテゴリ, NOVEL, TECHNOLOGY, SOCIETY, BUSINESS, DESIGN, HISTORYのいずれか"
+    category: Category
+}
+
+input CreateBookInput {
+    "title: 本のタイトル"
+    title: String!
+
+    "category: 本のカテゴリ, NOVEL, TECHNOLOGY, SOCIETY, BUSINESS, DESIGN, HISTORYのいずれか"
+    category: Category!
+
+    "description: 本の説明"
+    description: String
+}
+
+input UpdateBookInput {
+    "uid: uuidで一意に識別される本のID"
+    uid: ID!
+
+    "title: 本のタイトル"
+    title: String
+
+    "category: 本のカテゴリ, NOVEL, TECHNOLOGY, SOCIETY, BUSINESS, DESIGN, HISTORYのいずれか"
+    category: Category
+
+    "description: 本の説明"
+    description: String
+}
+
+type Query {
+    "getBooks: 本の一覧を取得する。searchQueryで絞り込みが可能"
+    getBooks(searchQuery: SearchQuery): [Book!]!
+
+    "getBook: uidで指定された本を1冊取得する"
+    getBook(uid: ID!): Book
+}
+
+type Mutation {
+    "createBook: 本をカタログ上にinputで指定された情報で登録する"
+    createBook(input: CreateBookInput!): Book!
+
+    "updateBook: uidで指定された本の情報をinputで指定された内容に更新する"
+    updateBook(input: UpdateBookInput!): Book!
+
+    "deleteBook: uidで指定された本をカタログから削除する"
+    deleteBook(uid: ID!): Boolean!
+}

@@ -1,60 +1,80 @@
 import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
+import { GraphQLFileLoader } from '@graphql-tools/graphql-file-loader';
+import { loadSchemaSync } from '@graphql-tools/load';
+import { addResolversToSchema } from '@graphql-tools/schema';
+import { v4 as uuidv4 } from 'uuid';
 
-// A schema is a collection of type definitions (hence "typeDefs")
-// that together define the "shape" of queries that are executed against
-// your data.
-const typeDefs = `#graphql
-  # Comments in GraphQL strings (such as this one) start with the hash (#) symbol.
-
-  # This "Book" type defines the queryable fields for every book in our data source.
-  type Book {
-    title: String
-    author: String
-  }
-
-  # The "Query" type is special: it lists all of the available queries that
-  # clients can execute, along with the return type for each. In this
-  # case, the "books" query returns an array of zero or more Books (defined above).
-  type Query {
-    books: [Book],
-    book(index: Int): Book,
-  }
-`;
+const schema = loadSchemaSync("./src/schema.graphql", {
+  loaders: [new GraphQLFileLoader()],
+});
 
 const books = [
   {
-    title: 'The Awakening',
-    author: 'Kate Chopin',
+    uid: uuidv4(),
+    title: 'The Society',
+    category: 'SOCIETY',
+    description: 'The Society is a book about the society',
   },
   {
-    title: 'City of Glass',
-    author: 'Paul Auster',
+    uid: uuidv4(),
+    title: 'Pattern Recognition and Machine Learning',
+    category: 'TECHNOLOGY',
+    description: 'Pattern Recognition and Machine Learning is a book about the technology',
   },
+  {
+    uid: uuidv4(),
+    title: 'The Novel',
+    category: 'NOVEL',
+    description: 'The Novel is a book about the novel',
+  }
 ];
 
-// Resolvers define how to fetch the types defined in your schema.
-// This resolver retrieves books from the "books" array above.
 const resolvers = {
   Query: {
-    books: () => books,
-    book: (root, {index}) => books[index],
+    getBooks: (_, serachQuery) => {
+      return books
+    },
+    getBook: (_, {uid}) => books.find(book => book.uid === uid),
   },
+  Mutation: {
+    createBook: (_, book) => {
+      const newBook = book.input;
+      newBook.uid = uuidv4();
+      books.push(newBook);
+      return newBook;
+    },
+
+    updateBook: (_, {uid, book}) => {
+      const updatedBook = book.input;
+      const index = books.findIndex(book => book.uid === updatedBook.uid);
+      const oldBook = books[index]
+
+      for (const key in updatedBook) {
+        if (updatedBook[key] !== oldBook[key]) {
+          books[index] = {...books[index], ...updatedBook};
+        }
+      }
+
+      books[index] = {...books[index], ...updatedBook};
+
+      return books[index];
+    },
+    
+    deleteBook: (_, {uid}) => {
+      const index = books.findIndex(book => book.uid === uid);
+      if (index === -1) return false;
+      books.splice(index, 1);
+      return true;
+    }
+  }
 };
 
-// The ApolloServer constructor requires two parameters: your schema
-// definition and your set of resolvers.
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
+const schemaWithResolvers = addResolversToSchema({schema, resolvers});
+const server = new ApolloServer({ schema: schemaWithResolvers});
+
+const {url} = await startStandaloneServer(server, {
+  listen: {port: 4000},
 });
 
-// Passing an ApolloServer instance to the `startStandaloneServer` function:
-//  1. creates an Express app
-//  2. installs your ApolloServer instance as middleware
-//  3. prepares your app to handle incoming requests
-const { url } = await startStandaloneServer(server, {
-  listen: { port: 4000 },
-});
-
-console.log(`🚀  Server ready at: ${url}`);
+console.log(`Server ready at ${url}`)
