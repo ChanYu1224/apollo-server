@@ -7,35 +7,80 @@ enum Category {
     HISTORY
 }
 
+enum UserType {
+    ADMIN
+    USER
+}
+
+enum ReadingProgress {
+    NOT_STARTED
+    READING
+    FINISHED
+}
+
+type User {
+    "uid: uuidで一意に識別されるユーザーのID"
+    uid: ID!
+    "type: ユーザーの種別, ADMIN, USERのいずれか"
+    type: UserType!
+    "name: ユーザー名"
+    name: String!
+    "bookStatuses: ユーザーの本棚に登録されている本と読書状況一覧"
+    bookShelf: [BookStatus!]!
+}
+
+
+type BookStatus {
+    "uid: uuidで一意に識別されるステータスのID"
+    uid: ID!
+    "bookUid: uuidで一意に識別される本のID"
+    book: Book!
+    "status: 読書状況, NOT_STARTED, READING, FINISHEDのいずれか"
+    progress: ReadingProgress!
+    "reviewUid: uuidで一意に識別されるレビューのID"
+    review: Review
+}
+
+
+type Review {
+    "uid: uuidで一意に識別されるレビューのID"
+    uid: ID!
+    "rating: レビューの評価, 1~5の整数"
+    rating: Int!
+    "comment: レビューのコメント"
+    comment: String
+}
+
+
 type Book {
     "uid: uuidで一意に識別される本のID"
     uid: ID!
-
     "title: 本のタイトル"
     title: String!
-
     "category: 本のカテゴリ, NOVEL, TECHNOLOGY, SOCIETY, BUSINESS, DESIGN, HISTORYのいずれか"
     category: Category!
-
     "description: 本の説明"
     description: String
+    "averageRating: 本に対するレビューの平均評価"
+    averageRating: Float!
+    "reviews: 本に対するレビューの一覧"
+    reviews: [Review!]!
 }
+
 
 input SearchQuery {
     "title: 本のタイトル"
     title: String
-
     "category: 本のカテゴリ, NOVEL, TECHNOLOGY, SOCIETY, BUSINESS, DESIGN, HISTORYのいずれか"
     category: Category
 }
 
+
 input CreateBookInput {
     "title: 本のタイトル"
     title: String!
-
     "category: 本のカテゴリ, NOVEL, TECHNOLOGY, SOCIETY, BUSINESS, DESIGN, HISTORYのいずれか"
     category: Category!
-
     "description: 本の説明"
     description: String
 }
@@ -43,32 +88,84 @@ input CreateBookInput {
 input UpdateBookInput {
     "uid: uuidで一意に識別される本のID"
     uid: ID!
-
     "title: 本のタイトル"
     title: String
-
     "category: 本のカテゴリ, NOVEL, TECHNOLOGY, SOCIETY, BUSINESS, DESIGN, HISTORYのいずれか"
     category: Category
-
     "description: 本の説明"
     description: String
+}
+
+input ReviewInput {
+    "uid: uuidで一意に識別されるレビューのID"
+    uid: ID!
+    "rating: レビューの評価, 1~5の整数"
+    rating: Int
+    "comment: レビューのコメント"
+    comment: String
+}
+
+input CreateReviewInput {
+    "rating: レビューの評価, 1~5の整数"
+    rating: Int!
+    "comment: レビューのコメント"
+    comment: String
+}
+
+input UpdateReviewInput {
+    "uid: uuidで一意に識別されるレビューのID"
+    uid: ID!
+    "rating: レビューの評価, 1~5の整数"
+    rating: Int
+    "comment: レビューのコメント"
+    comment: String
+}
+
+input CreateBookStatusInput {
+    "bookUid: uuidで一意に識別される本のID"
+    bookUid: ID!
+    "status: 読書状況, NOT_STARTED, READING, FINISHEDのいずれか"
+    status: ReadingProgress!
+    "review: レビューの情報"
+    review: CreateReviewInput
+}
+
+input UpdateBookStatusInput {
+    "uid: uuidで一意に識別されるステータスのID"
+    uid: ID!
+    "status: 読書状況, NOT_STARTED, READING, FINISHEDのいずれか"
+    status: ReadingProgress!
+    "review: レビューの情報"
+    review: UpdateReviewInput
 }
 
 type Query {
     "getBooks: 本の一覧を取得する。searchQueryで絞り込みが可能"
     getBooks(searchQuery: SearchQuery): [Book!]!
-
     "getBook: uidで指定された本を1冊取得する"
     getBook(uid: ID!): Book
+
+    "getUsers: ユーザの一覧を取得する。"
+    getUsers: [User!]!
+
+    "getBookStatuses: ユーザーの本棚に登録されている本と読書状況一覧を取得する"
+    getBookShelf(userId: ID!): [BookStatus!]!
+    "getBookStatus: uidで指定された本棚のステータスを1つ取得する"
+    getBookStatus(uid: ID!): BookStatus
 }
 
 type Mutation {
     "createBook: 本をカタログ上にinputで指定された情報で登録する"
     createBook(input: CreateBookInput!): Book!
-
     "updateBook: uidで指定された本の情報をinputで指定された内容に更新する"
     updateBook(input: UpdateBookInput!): Book!
-
     "deleteBook: uidで指定された本をカタログから削除する"
     deleteBook(uid: ID!): Boolean!
+
+    "createBookStatus: ユーザーの本棚に本を登録する"
+    createBookStatus(input: CreateBookStatusInput!): BookStatus!
+    "updateBookStatus: ユーザーの本棚に登録された本の情報を更新する"
+    updateBookStatus(input: UpdateBookStatusInput!): BookStatus!
+    "deleteBookStatus: ユーザーの本棚から本を削除する"
+    deleteBookStatus(uid: ID!): Boolean!
 }
