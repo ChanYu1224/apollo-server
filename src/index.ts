@@ -3,8 +3,7 @@ import { startStandaloneServer } from '@apollo/server/standalone';
 import { GraphQLFileLoader } from '@graphql-tools/graphql-file-loader';
 import { loadSchemaSync } from '@graphql-tools/load';
 import { addResolversToSchema } from '@graphql-tools/schema';
-import { get } from 'http';
-import { v4 as uuidv4 } from 'uuid';
+import { db } from "./db/database";
 
 const schema = loadSchemaSync("./src/schema.graphql", {
   loaders: [new GraphQLFileLoader()],
@@ -13,13 +12,13 @@ const schema = loadSchemaSync("./src/schema.graphql", {
 
 const users = [
   {
-    uid: '1',
+    id: '1',
     type: "ADMIN",
     name: 'Yuta Nishikawa',
     bookStatusIds: ['1', '2'],
   },
   {
-    uid: '2',
+    id: '2',
     type: "USER",
     name: 'Taro Yamada',
     bookStatusIds: ['3','4'],
@@ -28,25 +27,25 @@ const users = [
 
 const bookStatuses = [
   {
-    uid: '1',
+    id: '1',
     bookId: '1',
     progress: "READING",
     reviewId: '1',
   },
   {
-    uid: '2',
+    id: '2',
     bookId: '2',
     progress: "FINISHED",
     reviewId: '2',
   },
   {
-    uid: '3',
+    id: '3',
     bookId: '3',
     progress: "READING",
     reviewId: '3',
   },
   {
-    uid: '4',
+    id: '4',
     bookId: '3',
     progress: "FINISHED",
     reviewId: '4',
@@ -56,22 +55,22 @@ const bookStatuses = [
 
 const reviews = [
   {
-    uid: '1',
+    id: '1',
     rating: 4,
     comment: 'good',
   },
   {
-    uid: '2',
+    id: '2',
     rating: 3,
     comment: 'bad',
   },
   {
-    uid: '3',
+    id: '3',
     rating: 5,
     comment: 'good',
   },
   {
-    uid: '4',
+    id: '4',
     rating: 2,
     comment: 'bad',
   }
@@ -80,21 +79,21 @@ const reviews = [
 
 const books = [
   {
-    uid: uuidv4(),
+    id: "1",
     title: 'The Society',
     category: 'SOCIETY',
     description: 'The Society is a book about the society',
     reviewIds: ['1', '2'],
   },
   {
-    uid: uuidv4(),
+    id: "2",
     title: 'Pattern Recognition and Machine Learning',
     category: 'TECHNOLOGY',
     description: 'Pattern Recognition and Machine Learning is a book about the technology',
     reviewIds: ['3'],
   },
   {
-    uid: uuidv4(),
+    id: "3",
     title: 'The Novel',
     category: 'NOVEL',
     description: 'The Novel is a book about the novel',
@@ -107,29 +106,29 @@ const resolvers = {
     getBooks: (parent, {searchQuery}) => {
       return books
     },
-    getBook: (parent, {uid}) => books.find(book => book.uid === uid),
+    getBook: (parent, {id}) => books.find(book => book.id === id),
 
     getUsers: () => {
       return users
     },
 
     getBookShelf: (parent, {userId}) => {
-      const statusIds = users.find(user => user.uid === userId).bookStatusIds;
-      const bookShelf = statusIds.map(id => bookStatuses.find(status => status.uid === id));
+      const statusIds = users.find(user => user.id === userId).bookStatusIds;
+      const bookShelf = statusIds.map(id => bookStatuses.find(status => status.id === id));
       return bookShelf;
     },
-    getBookStatus: (parent, {uid}) => bookStatuses.find(status => status.uid === uid),
+    getBookStatus: (parent, {id}) => bookStatuses.find(status => status.id === id),
   },
   Mutation: {
     createBook: (parent, {book}) => {
       const newBook = book;
-      newBook.uid = uuidv4();
+      newBook.id = String(books.length + 1);
       books.push(newBook);
       return newBook;
     },
     updateBook: (parent, {book}) => {
       const updatedBook = book;
-      const index = books.findIndex(book => book.uid === updatedBook.uid);
+      const index = books.findIndex(book => book.id === updatedBook.id);
 
       for (const key in updatedBook) {
         if (updatedBook[key] !== books[index][key] && updatedBook[key] !== null) {
@@ -139,8 +138,8 @@ const resolvers = {
 
       return books[index];
     },
-    deleteBook: (parent, {uid}) => {
-      const index = books.findIndex(book => book.uid === uid);
+    deleteBook: (parent, {id}) => {
+      const index = books.findIndex(book => book.id === id);
       if (index === -1) return false;
       books.splice(index, 1);
       return true;
@@ -148,7 +147,7 @@ const resolvers = {
 
     createBookStatus(parent, {bookStatus}) {
       const newBookStatus = bookStatus;
-      newBookStatus.uid = uuidv4();
+      newBookStatus.id = String(bookStatuses.length + 1);
       bookStatuses.push(newBookStatus);
       return newBookStatus;
     }
@@ -157,12 +156,12 @@ const resolvers = {
   Book: {
     reviews: (parent) => {
       const {reviewIds} = parent;
-      return reviewIds.map(id => reviews.find(review => review.uid === id));
+      return reviewIds.map(id => reviews.find(review => review.id === id));
     },
     averageRating: (parent) => {
       const {reviewIds} = parent;
       const totalRating = reviewIds.reduce((acc, id) => {
-        const review = reviews.find(review => review.uid === id);
+        const review = reviews.find(review => review.id === id);
         return acc + review.rating;
       }, 0);
       return totalRating / reviewIds.length;
@@ -183,6 +182,9 @@ const server = new ApolloServer({ schema: schemaWithResolvers});
 
 const {url} = await startStandaloneServer(server, {
   listen: {port: 4000},
+  context: async ({req}) => {
+    return { db };
+  }
 });
 
 console.log(`Server ready at ${url}`)
